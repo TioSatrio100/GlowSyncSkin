@@ -1,133 +1,145 @@
-import Image from "next/image";
-import { CameraIcon, ArrowUpTrayIcon } from "@heroicons/react/24/outline";
+"use client";
+import { useState, useRef, useEffect } from "react";
+import * as tmImage from "@teachablemachine/image";
 
-export default function Analyze() {
+export default function SkinAnalysis() {
+  const [model, setModel] = useState<tmImage.CustomMobileNet | null>(null);
+  const [maxPredictions, setMaxPredictions] = useState(0);
+  const [previewSrc, setPreviewSrc] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
+  const [results, setResults] = useState<{ className: string; probability: number }[]>([]);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const URL = "https://teachablemachine.withgoogle.com/models/zCmg0Wmyk/";
+
+  // Initialize the model
+  useEffect(() => {
+    async function loadModel() {
+      try {
+        const modelURL = URL + "model.json";
+        const metadataURL = URL + "metadata.json";
+        const loadedModel = await tmImage.load(modelURL, metadataURL);
+        setModel(loadedModel);
+        setMaxPredictions(loadedModel.getTotalClasses());
+      } catch (error) {
+        console.error("Error loading model:", error);
+      }
+    }
+    loadModel();
+  }, []);
+
+  const handleUploadClick = () => {
+    fileInputRef.current?.click();
+  };
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files[0]) {
+      processFile(e.target.files[0]);
+    }
+  };
+
+  const handleDrop = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (e.dataTransfer.files && e.dataTransfer.files[0]) {
+      processFile(e.dataTransfer.files[0]);
+    }
+    e.currentTarget.style.borderColor = "#e0e0e0";
+    e.currentTarget.style.backgroundColor = "#fff";
+  };
+
+  const processFile = (file: File) => {
+    const validTypes = ["image/jpeg", "image/png", "image/gif"];
+    if (!validTypes.includes(file.type)) {
+      alert("Please upload a valid image file (JPEG, PNG, GIF)");
+      return;
+    }
+
+    if (file.size > 10 * 1024 * 1024) {
+      alert("File size should be less than 10MB");
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      setPreviewSrc(e.target?.result as string);
+      analyzeImage(e.target?.result as string);
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const analyzeImage = async (imageSrc: string) => {
+    if (!model) return;
+
+    setIsLoading(true);
+    setResults([]);
+
+    try {
+      const img = new Image();
+      img.src = imageSrc;
+      await img.decode();
+
+      const prediction = await model.predict(img);
+      setResults(prediction);
+    } catch (error) {
+      console.error("Error analyzing image:", error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   return (
-    <div className="min-h-screen bg-gradient-to-br from-primary-50 to-secondary-50 py-12">
-      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="text-center mb-12">
-          <h1 className="text-4xl font-bold text-gray-900 mb-4">AI Skin Analysis</h1>
-          <p className="text-lg text-gray-600">Get personalized skincare recommendations based on your unique skin profile</p>
-        </div>
+    <div className="max-w-4xl mx-auto p-8 text-center bg-white min-h-screen">
+      <h1 className="text-4xl font-bold mb-4 text-gray-800">AI Skin Analysis</h1>
+      <p className="text-lg text-gray-600 mb-10">Get personalized skincare recommendations based on your unique skin profile</p>
 
-        <div className="bg-white rounded-2xl shadow-xl p-8">
-          {/* Upload Section */}
-          <div className="mb-12">
-            <div className="max-w-xl mx-auto">
-              <div className="mt-1 flex justify-center px-6 pt-5 pb-6 border-2 border-dashed border-primary-300 rounded-lg hover:border-primary-400 transition-colors">
-                <div className="space-y-1 text-center">
-                  <div className="flex flex-col items-center">
-                    <CameraIcon className="h-12 w-12 text-primary-400" />
-                    <div className="flex text-sm text-gray-600 mt-4">
-                      <label htmlFor="file-upload" className="relative cursor-pointer bg-white rounded-md font-medium text-primary-600 hover:text-primary-500 focus-within:outline-none">
-                        <span>Upload a photo</span>
-                        <input id="file-upload" name="file-upload" type="file" className="sr-only" accept="image/*" />
-                      </label>
-                      <p className="pl-1">or drag and drop</p>
-                    </div>
-                    <p className="text-xs text-gray-500 mt-2">PNG, JPG, GIF up to 10MB</p>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Analysis Steps */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-12">
-            <div className="text-center">
-              <div className="mx-auto h-12 w-12 bg-primary-100 text-primary-600 rounded-xl flex items-center justify-center mb-4">
-                <ArrowUpTrayIcon className="h-6 w-6" />
-              </div>
-              <h3 className="text-lg font-medium text-gray-900 mb-2">Upload Photo</h3>
-              <p className="text-sm text-gray-500">Take or upload a clear photo of your face in good lighting</p>
-            </div>
-            <div className="text-center">
-              <div className="mx-auto h-12 w-12 bg-primary-100 text-primary-600 rounded-xl flex items-center justify-center mb-4">
-                <svg className="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
-                </svg>
-              </div>
-              <h3 className="text-lg font-medium text-gray-900 mb-2">AI Analysis</h3>
-              <p className="text-sm text-gray-500">Our AI analyzes your skin concerns and characteristics</p>
-            </div>
-            <div className="text-center">
-              <div className="mx-auto h-12 w-12 bg-primary-100 text-primary-600 rounded-xl flex items-center justify-center mb-4">
-                <svg className="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                </svg>
-              </div>
-              <h3 className="text-lg font-medium text-gray-900 mb-2">Get Recommendations</h3>
-              <p className="text-sm text-gray-500">Receive personalized product and routine recommendations</p>
-            </div>
-          </div>
-
-          {/* Results Section (Initially Hidden) */}
-          <div className="hidden">
-            <div className="border-t border-gray-200 pt-8">
-              <h2 className="text-2xl font-bold text-gray-900 mb-6">Your Skin Analysis Results</h2>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                {/* Skin Characteristics */}
-                <div className="bg-gray-50 rounded-lg p-6">
-                  <h3 className="text-lg font-medium text-gray-900 mb-4">Skin Characteristics</h3>
-                  <ul className="space-y-3">
-                    <li className="flex justify-between">
-                      <span className="text-gray-600">Skin Type</span>
-                      <span className="font-medium text-gray-900">Combination</span>
-                    </li>
-                    <li className="flex justify-between">
-                      <span className="text-gray-600">Hydration Level</span>
-                      <span className="font-medium text-gray-900">Moderate</span>
-                    </li>
-                    <li className="flex justify-between">
-                      <span className="text-gray-600">Sensitivity</span>
-                      <span className="font-medium text-gray-900">Low</span>
-                    </li>
-                  </ul>
-                </div>
-
-                {/* Concerns */}
-                <div className="bg-gray-50 rounded-lg p-6">
-                  <h3 className="text-lg font-medium text-gray-900 mb-4">Primary Concerns</h3>
-                  <ul className="space-y-3">
-                    <li className="flex items-center">
-                      <span className="h-2 w-2 bg-primary-600 rounded-full mr-2"></span>
-                      <span className="text-gray-600">Uneven Texture</span>
-                    </li>
-                    <li className="flex items-center">
-                      <span className="h-2 w-2 bg-primary-600 rounded-full mr-2"></span>
-                      <span className="text-gray-600">Dark Spots</span>
-                    </li>
-                    <li className="flex items-center">
-                      <span className="h-2 w-2 bg-primary-600 rounded-full mr-2"></span>
-                      <span className="text-gray-600">Fine Lines</span>
-                    </li>
-                  </ul>
-                </div>
-              </div>
-
-              {/* Recommended Products */}
-              <div className="mt-8">
-                <h3 className="text-lg font-medium text-gray-900 mb-4">Recommended Products</h3>
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-                  {[1, 2, 3].map((item) => (
-                    <div key={item} className="bg-white rounded-lg shadow-sm overflow-hidden">
-                      <div className="relative h-48">
-                        <Image src={`/product-${item}.jpg`} alt="Product" fill className="object-cover" />
-                      </div>
-                      <div className="p-4">
-                        <h4 className="font-medium text-gray-900 mb-1">Product Name</h4>
-                        <p className="text-sm text-gray-500 mb-2">Brief description</p>
-                        <button className="w-full bg-primary-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-primary-700">View Details</button>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
+      <div
+        className="border-2 border-dashed border-gray-300 rounded-xl p-16 mb-10 cursor-pointer transition-all hover:border-pink-500 hover:bg-gray-50"
+        onClick={handleUploadClick}
+        onDragOver={(e) => {
+          e.preventDefault();
+          e.currentTarget.style.borderColor = "#3b82f6";
+          e.currentTarget.style.backgroundColor = "#f8fafc";
+        }}
+        onDragLeave={(e) => {
+          e.preventDefault();
+          e.currentTarget.style.borderColor = "#e0e0e0";
+          e.currentTarget.style.backgroundColor = "#fff";
+        }}
+        onDrop={handleDrop}
+      >
+        <div className="text-2xl text-gray-600 mb-6">Upload a photo or drag and drop</div>
+        <div className="text-gray-500">PNG, JPG, GIF up to 10MB</div>
       </div>
+
+      <input type="file" ref={fileInputRef} accept="image/*" className="hidden" onChange={handleFileChange} />
+
+      {previewSrc && (
+        <div className="flex justify-center my-10">
+          <img src={previewSrc} alt="Preview" className="max-w-full max-h-[500px] rounded-xl shadow-lg border border-gray-200" />
+        </div>
+      )}
+
+      {isLoading && <div className="text-lg text-gray-600 my-8">Analyzing your skin... Please wait</div>}
+
+      {results.length > 0 && (
+        <div className="mt-12 text-left bg-white p-8 rounded-xl shadow-md border border-gray-200">
+          <h2 className="text-2xl font-bold text-gray-800 mb-6 pb-4 border-b border-gray-200">Analysis Results</h2>
+          <div className="space-y-6">
+            {results.map((result, index) => {
+              const percentage = Math.round(result.probability * 100);
+              return (
+                <div key={index} className="pb-6 border-b border-gray-100 last:border-0">
+                  <div className="text-xl font-medium text-gray-700 mb-2">{result.className}</div>
+                  <div className="h-4 bg-gray-200 rounded-full overflow-hidden">
+                    <div className="h-full bg-pink-500 transition-all duration-700 ease-out" style={{ width: `${percentage}%` }}></div>
+                  </div>
+                  <div className="text-lg font-semibold text-pink-600 mt-2">{percentage}%</div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
