@@ -1,5 +1,7 @@
-import Image from "next/image";
+"use client";
+
 import Link from "next/link";
+import Image from "next/image";
 import { BeakerIcon, SparklesIcon, HeartIcon } from "@heroicons/react/24/outline";
 
 export default function Home() {
@@ -57,33 +59,6 @@ export default function Home() {
               <h3 className="text-xl font-semibold">Clean Beauty</h3>
               <p className="text-gray-600">Cruelty-free, sustainable products that are good for you and the planet.</p>
             </div>
-          </div>
-        </div>
-      </section>
-
-      {/* Featured Products */}
-      <section className="py-24 bg-pink-50">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center mb-16">
-            <h2 className="text-3xl font-bold">Featured Products</h2>
-            <p className="mt-4 text-gray-600">Discover our most loved skincare solutions</p>
-          </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
-            {[1, 2, 3].map((item) => (
-              <div key={item} className="bg-white rounded-xl shadow-sm overflow-hidden hover:shadow-md transition-shadow">
-                <div className="relative h-64">
-                  <Image src={`/img/product-${item}.jpg`} alt="Product" fill className="object-cover" />
-                </div>
-                <div className="p-6">
-                  <h3 className="font-semibold text-lg mb-2">Premium Skincare Product</h3>
-                  <p className="text-gray-600 mb-4">Description of the amazing benefits this product offers.</p>
-                  <div className="flex justify-between items-center">
-                    <span className="text-pink-500 font-semibold">$99.99</span>
-                    <button className="bg-pink-500 text-white px-4 py-2 rounded-lg text-sm hover:bg-pink-600">Add to Cart</button>
-                  </div>
-                </div>
-              </div>
-            ))}
           </div>
         </div>
       </section>

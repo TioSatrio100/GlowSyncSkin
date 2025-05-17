@@ -1,24 +1,31 @@
+import { createMiddlewareClient } from "@supabase/auth-helpers-nextjs";
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 
-export function middleware(request: NextRequest) {
-  const isLoggedIn = request.cookies.get("isLoggedIn");
-  const isAdminPath = request.nextUrl.pathname.startsWith("/admin");
-  const isLoginPage = request.nextUrl.pathname === "/admin/login";
+// middleware.ts
+export async function middleware(req: NextRequest) {
+  const res = NextResponse.next();
+  const supabase = createMiddlewareClient({ req, res });
+  const { pathname } = req.nextUrl;
 
-  // If trying to access admin pages without being logged in
-  if (isAdminPath && !isLoginPage && !isLoggedIn) {
-    return NextResponse.redirect(new URL("/admin/login", request.url));
+  const protectedRoutes = ["/catalog", "/analyze", "/admin"];
+
+  const isProtectedRoute = protectedRoutes.some((route) => pathname.startsWith(route));
+
+  if (isProtectedRoute) {
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    if (!user) {
+      const loginUrl = new URL("/auth/login", req.url);
+      loginUrl.searchParams.set("redirect", pathname);
+      return NextResponse.redirect(loginUrl);
+    }
   }
 
-  // If trying to access login page while already logged in
-  if (isLoginPage && isLoggedIn) {
-    return NextResponse.redirect(new URL("/admin/dashboard", request.url));
-  }
-
-  return NextResponse.next();
+  return res;
 }
 
 export const config = {
-  matcher: "/admin/:path*",
+  matcher: ["/catalog/:path*", "/analyze/:path*", "/admin/:path*", "/shop/:path*"],
 };

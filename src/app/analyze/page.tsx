@@ -1,30 +1,40 @@
 "use client";
 import { useState, useRef, useEffect } from "react";
-import * as tmImage from "@teachablemachine/image";
+import * as tf from "@tensorflow/tfjs";
+import * as tfjsConverter from "@tensorflow/tfjs-converter";
 
 export default function SkinAnalysis() {
-  const [model, setModel] = useState<tmImage.CustomMobileNet | null>(null);
-  const [maxPredictions, setMaxPredictions] = useState(0);
+  const [model, setModel] = useState<tf.LayersModel | null>(null);
   const [previewSrc, setPreviewSrc] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [results, setResults] = useState<{ className: string; probability: number }[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const URL = "https://teachablemachine.withgoogle.com/models/zCmg0Wmyk/";
 
   // Initialize the model
   useEffect(() => {
     async function loadModel() {
       try {
-        const modelURL = URL + "model.json";
-        const metadataURL = URL + "metadata.json";
-        const loadedModel = await tmImage.load(modelURL, metadataURL);
+        setIsLoading(true);
+        await tf.ready(); // Wait for TensorFlow.js to be ready
+
+        // Load the model from public/model directory
+        const loadedModel = await tf.loadLayersModel("/model/model.json");
         setModel(loadedModel);
-        setMaxPredictions(loadedModel.getTotalClasses());
+        console.log("Model loaded successfully");
       } catch (error) {
         console.error("Error loading model:", error);
+      } finally {
+        setIsLoading(false);
       }
     }
     loadModel();
+
+    // Cleanup function
+    return () => {
+      if (model) {
+        model.dispose();
+      }
+    };
   }, []);
 
   const handleUploadClick = () => {
@@ -67,6 +77,23 @@ export default function SkinAnalysis() {
     reader.readAsDataURL(file);
   };
 
+  const preprocessImage = (image: HTMLImageElement) => {
+    // Adjust these values based on your model's expected input
+    const width = 224;
+    const height = 224;
+
+    return tf.tidy(() => {
+      // Read the image as a tensor
+      const tensor = tf.browser
+        .fromPixels(image)
+        .resizeNearestNeighbor([width, height]) // Resize
+        .toFloat() // Convert to float
+        .div(255.0) // Normalize to [0,1]
+        .expandDims(); // Add batch dimension
+      return tensor;
+    });
+  };
+
   const analyzeImage = async (imageSrc: string) => {
     if (!model) return;
 
@@ -76,10 +103,26 @@ export default function SkinAnalysis() {
     try {
       const img = new Image();
       img.src = imageSrc;
-      await img.decode();
+      await new Promise((resolve) => {
+        img.onload = resolve;
+      });
 
-      const prediction = await model.predict(img);
-      setResults(prediction);
+      // Preprocess the image
+      const tensor = preprocessImage(img);
+
+      // Make prediction
+      const prediction = model.predict(tensor) as tf.Tensor;
+      const data = await prediction.data();
+
+      // Convert prediction to readable results
+      // Adjust this part based on your model's output format
+      const classNames = ["Acne", "Eczema", "Normal", "Psoriasis"]; // Example class names
+      const probabilities = Array.from(data).map((prob, index) => ({
+        className: classNames[index] || `Class ${index}`,
+        probability: prob,
+      }));
+
+      setResults(probabilities);
     } catch (error) {
       console.error("Error analyzing image:", error);
     } finally {
