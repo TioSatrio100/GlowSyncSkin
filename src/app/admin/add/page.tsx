@@ -24,7 +24,7 @@ export default function AddProductPage() {
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const router = useRouter();
 
-  // 🔄 Ambil daftar kategori dari Supabase
+  //  Get category list from Supabase
   useEffect(() => {
     const fetchCategories = async () => {
       const { data, error } = await supabase.from("Category").select("*");
@@ -55,7 +55,6 @@ export default function AddProductPage() {
 
     let imageUrl = "";
 
-    // 🔼 Upload gambar ke Supabase Storage
     if (imageFile) {
       const fileExt = imageFile.name.split(".").pop();
       const fileName = `${Date.now()}.${fileExt}`;
@@ -70,7 +69,6 @@ export default function AddProductPage() {
       imageUrl = `https://${process.env.NEXT_PUBLIC_SUPABASE_PROJECT_ID}.supabase.co/storage/v1/object/public/product-images/${fileName}`;
     }
 
-    // 📬 Kirim data produk ke API
     await fetch("/api/products", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -94,7 +92,7 @@ export default function AddProductPage() {
       <input name="price" placeholder="Price" type="number" className="border p-2 w-full" onChange={handleChange} required />
       <input name="stock" placeholder="Stock" type="number" className="border p-2 w-full" onChange={handleChange} required />
 
-      {/* 🔽 Select Kategori dari Supabase */}
+      {/* Select category from supabase */}
       <select name="categoryId" className="border p-2 w-full" value={form.categoryId} onChange={handleChange} required>
         <option value="">-- Pilih Kategori --</option>
         {categoryList.map((cat) => (
@@ -104,10 +102,10 @@ export default function AddProductPage() {
         ))}
       </select>
 
-      {/* 🔼 Upload Gambar */}
+      {/*  Upload picture */}
       <input type="file" accept="image/*" onChange={handleImageChange} className="border p-2 w-full" />
 
-      {/* 👀 Preview Gambar */}
+      {/*  Preview picture */}
       {previewUrl && (
         <div className="relative w-full h-64 mt-4 border rounded overflow-hidden">
           <Image src={previewUrl} alt="Preview" fill className="object-cover" />

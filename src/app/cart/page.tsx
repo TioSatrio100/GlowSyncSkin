@@ -34,7 +34,7 @@ export default function CartPage() {
   return (
     <div className="min-h-[calc(100vh-160px)]">
       {" "}
-      {/* Sesuaikan dengan tinggi footer */}
+      {/* Consistent with footer height */}
       <div className="container mx-auto px-4 py-8 max-w-4xl">
         <h1 className="text-2xl font-bold mb-6">Your Cart</h1>
 
